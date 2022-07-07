@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"time"
+	"strconv"
+	"math/rand"
 
 	"github.com/hyperledger/sawtooth-sdk-go/consensus"
 	"github.com/hyperledger/sawtooth-sdk-go/messaging"
@@ -11,6 +13,8 @@ import (
 
 	zmq "github.com/pebbe/zmq4"
 )
+
+const DEFAULT_WAIT_TIME = 0;
 
 type LogGuard struct {
     not_ready_to_summarize bool
@@ -285,7 +289,42 @@ type devmodeService struct{
     // }
 
 	func (self devmodeService) calculate_wait_time(chain_head_id consensus.BlockId) time.Duration {
-		
+		settings, err := self.service.Get_settings(chain_head_id, []string{"sawtooth.consensus.min_wait_time", "sawtooth.consensus.max_wait_time"})
+
+		wait_time := 0
+
+		if err != nil {
+
+			// get min_wait_time
+			min_wait_time_string := settings["sawtooth.consensus.min_wait_time"]
+			min_wait_time, err := strconv.Atoi(min_wait_time_string)
+			if err != nil {
+				min_wait_time = 0
+			}
+
+			// get max_wait_time
+			max_wait_time_string := settings["sawtooth.consensus.max_wait_time"]
+			max_wait_time, err := strconv.Atoi(max_wait_time_string)
+			if err != nil {
+				max_wait_time = 0
+			}
+			
+			if min_wait_time >= max_wait_time {
+				wait_time = DEFAULT_WAIT_TIME
+			} else {
+				// wait_time = value between min_wait_time (inclusive) and max_wait_time (exclusive)
+				rand_range := max_wait_time - min_wait_time
+				wait_time = rand.Intn(rand_range) + min_wait_time
+			}
+
+		} else {
+			wait_time = DEFAULT_WAIT_TIME
+		}
+
+		// Convert WAIT_TIME from seconds to nanoseconds so we can store it in a time.Duration
+		var duration time.Duration = time.Duration(wait_time) * 1000000000
+
+		return duration
 	}
 //<
 
@@ -397,6 +436,12 @@ type DevmodeEngine struct{}
 
 // 	done <- true
 // }
+
+
+func init() {
+	// initialize RNG
+	rand.Seed(time.Now().UnixNano())
+}
 
 func main() {
 	fmt.Println("Hello, Gopher!")
