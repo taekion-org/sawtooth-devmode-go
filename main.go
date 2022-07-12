@@ -26,7 +26,7 @@ type devmodeService struct {
 
 //> impl devmodeService
 
-	func (ds devmodeService) new(service consensus.Service) devmodeService {
+	func (self devmodeService) new(service consensus.Service) devmodeService {
 		return devmodeService{
 			service: service,
 			logGuard: LogGuard{
@@ -332,9 +332,34 @@ type DevmodeEngine struct{}
 //> impl Engine for DevmodeEngine
 	func (de DevmodeEngine) start(
 		updates chan consensus.Update,
-		service consensus.Service,
+		service_arg consensus.Service,
 		startup_state consensus.StartupState,
-	)
+	){
+		// create new devmodeService with service_arg as it's service value
+		service := devmodeService{
+			service: service_arg,
+			logGuard: LogGuard{
+				not_ready_to_summarize: false,
+				not_ready_to_finalize:  false,
+			},
+		}
+		chain_head := startup_state.Chain_head
+
+		wait_time := service.calculate_wait_time(chain_head.Block_id);
+		published_at_height := false
+		start := time.Now()
+
+		service.initialize_block()
+
+		// 1. Wait for an incoming message.
+        // 2. Check for exit.
+        // 3. Handle the message.
+        // 4. Check for publishing.
+		for {
+			incoming_message := <-updates
+
+		}
+	}
 
 	func (de DevmodeEngine) version() string {
 		return "0.1"
