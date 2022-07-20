@@ -20,13 +20,13 @@ type LogGuard struct {
 }
 
 type devmodeService struct {
-	service  consensus.Service
+	service  consensus.ConsensusService
 	logGuard LogGuard
 }
 
 //> impl devmodeService
 
-	func (self devmodeService) new(service consensus.Service) devmodeService {
+	func (self devmodeService) new(service consensus.ConsensusService) devmodeService {
 		return devmodeService{
 			service: service,
 			logGuard: LogGuard{
@@ -43,8 +43,8 @@ type devmodeService struct {
 	//         .expect("Failed to get chain head")
 	// }
 
-	func (ds devmodeService) get_chain_head() consensus.Block {
-		head, err := ds.service.Get_chain_head()
+	func (self devmodeService) get_chain_head() consensus.Block {
+		head, err := self.service.Get_chain_head()
 		if err != nil {
 			panic("Failed to get chain head")
 		}
@@ -60,10 +60,10 @@ type devmodeService struct {
 	//         .unwrap()
 	// }
 
-	func (ds devmodeService) get_block(block_id consensus.BlockId) consensus.Block {
+	func (self devmodeService) get_block(block_id consensus.BlockId) consensus.Block {
 		ids := make([]consensus.BlockId, 0)
 		ids = append(ids, block_id)
-		blockIdMap, err := ds.service.Get_blocks(ids)
+		blockIdMap, err := self.service.Get_blocks(ids)
 		if err != nil {
 			panic("Failed to get block")
 		}
@@ -78,8 +78,8 @@ type devmodeService struct {
 	//         .expect("Failed to initialize");
 	// }
 
-	func (ds devmodeService) initialize_block() {
-		err := ds.service.Initialize_block(nil)
+	func (self devmodeService) initialize_block() {
+		err := self.service.InitializeBlock(nil)
 		if err != nil {
 			panic("Failed to initialize")
 		}
@@ -121,7 +121,7 @@ type devmodeService struct {
 	// }
 
 	func (self devmodeService) finalize_block() {
-		summary := self.service.Summarize_block()
+		summary, err := self.service.SummarizeBlock()
 	}
 
 	// fn check_block(&mut self, block_id: BlockId) {
@@ -133,7 +133,7 @@ type devmodeService struct {
 
 	func (self devmodeService) check_block(block_id consensus.BlockId) {
 		blocks := []consensus.BlockId{block_id}
-		err := self.service.Check_blocks(blocks)
+		err := self.service.CheckBlocks(blocks)
 		if err != nil {
 			panic("Failed to check block")
 		}
@@ -147,7 +147,7 @@ type devmodeService struct {
 	// }
 
 	func (self devmodeService) fail_block(block_id consensus.BlockId) {
-		err := self.service.Fail_block(block_id)
+		err := self.service.FailBlock(block_id)
 		if err != nil {
 			panic("Failed to fail block")
 		}
@@ -161,7 +161,7 @@ type devmodeService struct {
 	// }
 
 	func (self devmodeService) ignore_block(block_id consensus.BlockId) {
-		err := self.service.Ignore_block(block_id)
+		err := self.service.IgnoreBlock(block_id)
 		if err != nil {
 			panic("Failed to ignore block")
 		}
@@ -175,7 +175,7 @@ type devmodeService struct {
 	// }
 
 	func (self devmodeService) commit_block(block_id consensus.BlockId) {
-		err := self.service.Commit_block(block_id)
+		err := self.service.CommitBlock(block_id)
 		if err != nil {
 			panic("Failed to commit block")
 		}
@@ -193,7 +193,7 @@ type devmodeService struct {
 	// }
 
 	func (self devmodeService) cancel_block() {
-		err := self.service.Cancel_block()
+		err := self.service.CancelBlock()
 		if err != nil {
 			if err.(consensus.Error).ErrorEnum == consensus.InvalidState {
 
@@ -224,7 +224,7 @@ type devmodeService struct {
 	// }
 
 	func (self devmodeService) send_block_received(block consensus.Block) {
-		err := self.service.Send_to(block.Signer_id, "recieved", []uint8(block.Block_id))
+		err := self.service.SendTo(block.Signer_id, "recieved", []uint8(block.Block_id))
 		if err != nil {
 			panic("Failed to send block received")
 		}
@@ -237,7 +237,7 @@ type devmodeService struct {
 	// }
 
 	func (self devmodeService) send_block_ack(sender_id consensus.PeerId, block_id consensus.BlockId) {
-		err := self.service.Send_to(sender_id, "ack", []uint8(block_id))
+		err := self.service.SendTo(sender_id, "ack", []uint8(block_id))
 		if err != nil {
 			panic("Failed to send block ack")
 		}
@@ -287,7 +287,7 @@ type devmodeService struct {
 	// }
 
 	func (self devmodeService) calculate_wait_time(chain_head_id consensus.BlockId) time.Duration {
-		settings, err := self.service.Get_settings(chain_head_id, []string{"sawtooth.consensus.min_wait_time", "sawtooth.consensus.max_wait_time"})
+		settings, err := self.service.GetSettings(chain_head_id, []string{"sawtooth.consensus.min_wait_time", "sawtooth.consensus.max_wait_time"})
 
 		wait_time := 0
 
@@ -329,50 +329,24 @@ type devmodeService struct {
 
 type DevmodeEngine struct{}
 
-//> impl Engine for DevmodeEngine
-	func (de DevmodeEngine) start(
-		updates chan consensus.Update,
-		service_arg consensus.Service,
-		startup_state consensus.StartupState,
-	){
-		// create new devmodeService with service_arg as it's service value
-		service := devmodeService{
-			service: service_arg,
-			logGuard: LogGuard{
-				not_ready_to_summarize: false,
-				not_ready_to_finalize:  false,
-			},
-		}
-		chain_head := startup_state.Chain_head
-
-		wait_time := service.calculate_wait_time(chain_head.Block_id);
-		published_at_height := false
-		start := time.Now()
-
-		service.initialize_block()
-
-		// 1. Wait for an incoming message.
-        // 2. Check for exit.
-        // 3. Handle the message.
-        // 4. Check for publishing.
-		for {
-			incoming_message := <-updates
-
-		}
-	}
-
-	func (de DevmodeEngine) version() string {
+//> impl ConsensusEngineImpl for DevmodeEngine
+	func (self DevmodeEngine) Version() string {
 		return "0.1"
 	}
 
-	func (de DevmodeEngine) name() string {
+	func (self DevmodeEngine) Name() string {
 		return "Devmode"
 	}
 
-	func (de DevmodeEngine) additional_protocols() []consensus.StringDouble {
-		return make([]consensus.StringDouble, 0)
-	}
-
+	func (self DevmodeEngine) Startup(startupState consensus.StartupState, service consensus.ConsensusService) {}
+	func (self DevmodeEngine) Shutdown() {}
+	func (self DevmodeEngine) HandlePeerConnected(peerInfo consensus.PeerInfo) {}
+	func (self DevmodeEngine) HandlePeerDisconnected(peerInfo consensus.PeerInfo) {}
+	func (self DevmodeEngine) HandlePeerMessage(peerMessage consensus.PeerMessage) {}
+	func (self DevmodeEngine) HandleBlockNew(block consensus.Block) {}
+	func (self DevmodeEngine) HandleBlockValid(blockId consensus.BlockId) {}
+	func (self DevmodeEngine) HandleBlockInvalid(blockId consensus.BlockId) {}
+	func (self DevmodeEngine) HandleBlockCommit(blockId consensus.BlockId) {}
 //<
 
 // // The main worker thread finds an appropriate handler and processes the request
@@ -470,20 +444,20 @@ func init() {
 func main() {
 	fmt.Println("Hello, Gopher!")
 
-	peerId := make([]uint8, 0)
+	// peerId := make([]uint8, 0)
 
-	sampleBlock := consensus.Block{
-		Block_id:    "BlockId",
-		Previous_id: "BlockId",
-		Signer_id:   peerId,
-		Block_num:   0,
-		Payload:     make([]uint8, 0),
-		Summary:     make([]uint8, 0),
-	}
+	// sampleBlock := consensus.Block{
+	// 	Block_id:    "BlockId",
+	// 	Previous_id: "BlockId",
+	// 	Signer_id:   peerId,
+	// 	Block_num:   0,
+	// 	Payload:     make([]uint8, 0),
+	// 	Summary:     make([]uint8, 0),
+	// }
 
-	fmt.Println(sampleBlock)
+	// fmt.Println(sampleBlock)
 
-	fmt.Println("🦀HELLO"[0])
-	fmt.Println(string("Hello"[1]))
+	// fmt.Println("🦀HELLO"[0])
+	// fmt.Println(string("Hello"[1]))
 
 }
