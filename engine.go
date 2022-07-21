@@ -49,7 +49,7 @@ func (self DevmodeService) New(service consensus.ConsensusService) DevmodeServic
 	// }
 	//---
 
-	func (self DevmodeService) get_chain_head() consensus.Block {
+	func (self DevmodeService) getChainHead() consensus.Block {
 		logger.Debug("Getting chain head")
 		head, err := self.service.GetChainHead()
 		if err != nil {
@@ -67,7 +67,7 @@ func (self DevmodeService) New(service consensus.ConsensusService) DevmodeServic
 	//         .unwrap()
 	// }
 
-	func (self DevmodeService) get_block(block_id consensus.BlockId) consensus.Block {
+	func (self DevmodeService) getBlock(block_id consensus.BlockId) consensus.Block {
 		logger.Debugf("Getting block ", block_id)
 		ids := make([]consensus.BlockId, 0)
 		ids = append(ids, block_id)
@@ -176,7 +176,7 @@ func (self DevmodeService) New(service consensus.ConsensusService) DevmodeServic
 	// }
 	//---
 
-	func (self DevmodeService) ignore_block(block_id consensus.BlockId) {
+	func (self DevmodeService) ignoreBlock(block_id consensus.BlockId) {
 		logger.Debugf("Ignoring block ", block_id)
 		err := self.service.IgnoreBlock(block_id)
 		if err != nil {
@@ -192,7 +192,7 @@ func (self DevmodeService) New(service consensus.ConsensusService) DevmodeServic
 	// }
 	//---
 
-	func (self DevmodeService) commit_block(block_id consensus.BlockId) {
+	func (self DevmodeService) commitBlock(block_id consensus.BlockId) {
 		logger.Debugf("Committing block ", block_id)
 		err := self.service.CommitBlock(block_id)
 		if err != nil {
@@ -245,7 +245,7 @@ func (self DevmodeService) New(service consensus.ConsensusService) DevmodeServic
 	//         .expect("Failed to send block received");
 	// }
 
-	func (self DevmodeService) send_block_received(block consensus.Block) {
+	func (self DevmodeService) sendBlockReceived(block consensus.Block) {
 		blockId := block.BlockId()
 		err := self.service.SendTo(block.SignerId(), "recieved", blockId[:])
 		if err != nil {
@@ -374,7 +374,9 @@ type DevmodeEngineImpl struct{
 	}
 
 	func (self DevmodeEngineImpl) Startup(startupState consensus.StartupState, service consensus.ConsensusService) {}
-	func (self DevmodeEngineImpl) Shutdown() {}
+	func (self DevmodeEngineImpl) Shutdown() {
+		logger.Info("DevmodeEngineImpl Shutting down...")
+	}
 	func (self DevmodeEngineImpl) HandlePeerConnected(peerInfo consensus.PeerInfo) {}
 	func (self DevmodeEngineImpl) HandlePeerDisconnected(peerInfo consensus.PeerInfo) {}
 	func (self DevmodeEngineImpl) HandlePeerMessage(peerMessage consensus.PeerMessage) {}
@@ -394,7 +396,39 @@ type DevmodeEngineImpl struct{
 			self.service.failBlock(block.BlockId())
 		}
 	}
-	func (self DevmodeEngineImpl) HandleBlockValid(blockId consensus.BlockId) {}
+	func (self DevmodeEngineImpl) HandleBlockValid(blockId consensus.BlockId) {
+		block := self.service.getBlock(blockId)
+
+		self.service.sendBlockReceived(block)
+
+		chainHead := self.service.getChainHead()
+
+		logger.Infof("Choosing between chain heads -- current: ", chainHead, " -- new: ", block)
+
+		// advance the chain if possible
+		if block.BlockNum() > chainHead.BlockNum() || (block.BlockNum() == chainHead.BlockNum() && block.BlockId() > chainHead.BlockId()){
+			logger.Infof("Commiting ", block)
+			self.service.commitBlock(blockId)
+		} else if block.BlockNum() < chainHead.BlockNum() {
+			chainBlock := chainHead
+			for {
+				chainBlock = self.service.getBlock(chainBlock.PreviousId())
+				if chainBlock.BlockNum() == block.BlockNum(){
+					break
+				}
+			}
+			if block.BlockId() > chainBlock.BlockId(){
+				logger.Infof("Switching to new fork ", block)
+				self.service.commitBlock(blockId)
+			} else {
+				logger.Infof("Ignoring fork ", block)
+				self.service.ignoreBlock(blockId)
+			}
+		} else {
+			logger.Infof("Ignoring ", block)
+			self.service.ignoreBlock(blockId)
+		}
+	}
 	func (self DevmodeEngineImpl) HandleBlockInvalid(blockId consensus.BlockId) {}
 	func (self DevmodeEngineImpl) HandleBlockCommit(blockId consensus.BlockId) {}
 //<
