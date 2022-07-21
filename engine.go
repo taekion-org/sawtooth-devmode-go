@@ -2,12 +2,12 @@ package main
 
 import (
 	"math/rand"
+	"reflect"
 	"strconv"
 	"time"
-	"reflect"
 
-	"github.com/hyperledger/sawtooth-sdk-go/logging"
 	"github.com/hyperledger/sawtooth-sdk-go/consensus"
+	"github.com/hyperledger/sawtooth-sdk-go/logging"
 	// "github.com/hyperledger/sawtooth-sdk-go/messaging"
 	// consensus_pb2 "github.com/hyperledger/sawtooth-sdk-go/protobuf/consensus_pb2"
 	// zmq "github.com/pebbe/zmq4"
@@ -16,6 +16,7 @@ import (
 var logger *logging.Logger = logging.Get()
 
 const DEFAULT_WAIT_TIME = 0
+
 var NULL_BLOCK_IDENTIFIER = consensus.BlockId{}
 
 type LogGuard struct {
@@ -359,9 +360,9 @@ func (self DevmodeService) New(service consensus.ConsensusService) DevmodeServic
 
 //<
 
-type DevmodeEngineImpl struct{
+type DevmodeEngineImpl struct {
 	startup_state consensus.StartupState
-	service DevmodeService
+	service       DevmodeService
 }
 
 //> impl ConsensusEngineImpl for DevmodeEngineImpl
@@ -373,12 +374,13 @@ type DevmodeEngineImpl struct{
 		return "Devmode"
 	}
 
-	func (self DevmodeEngineImpl) Startup(startupState consensus.StartupState, service consensus.ConsensusService) {}
+	func (self DevmodeEngineImpl) Startup(startupState consensus.StartupState, service consensus.ConsensusService) {
+	}
 	func (self DevmodeEngineImpl) Shutdown() {
 		logger.Info("DevmodeEngineImpl Shutting down...")
 	}
-	func (self DevmodeEngineImpl) HandlePeerConnected(peerInfo consensus.PeerInfo) {}
-	func (self DevmodeEngineImpl) HandlePeerDisconnected(peerInfo consensus.PeerInfo) {}
+	func (self DevmodeEngineImpl) HandlePeerConnected(peerInfo consensus.PeerInfo)     {}
+	func (self DevmodeEngineImpl) HandlePeerDisconnected(peerInfo consensus.PeerInfo)  {}
 	func (self DevmodeEngineImpl) HandlePeerMessage(peerMessage consensus.PeerMessage) {}
 	func (self DevmodeEngineImpl) HandleBlockNew(block consensus.Block) {
 		logger.Infof("Checking consensus data: ", block)
@@ -388,7 +390,7 @@ type DevmodeEngineImpl struct{
 			return
 		}
 
-		if checkConsensus(block){
+		if checkConsensus(block) {
 			logger.Infof("Passed consensus check: ", block)
 			self.service.checkBlock(block.BlockId())
 		} else {
@@ -406,18 +408,18 @@ type DevmodeEngineImpl struct{
 		logger.Infof("Choosing between chain heads -- current: ", chainHead, " -- new: ", block)
 
 		// advance the chain if possible
-		if block.BlockNum() > chainHead.BlockNum() || (block.BlockNum() == chainHead.BlockNum() && block.BlockId() > chainHead.BlockId()){
+		if block.BlockNum() > chainHead.BlockNum() || (block.BlockNum() == chainHead.BlockNum() && block.BlockId() > chainHead.BlockId()) {
 			logger.Infof("Commiting ", block)
 			self.service.commitBlock(blockId)
 		} else if block.BlockNum() < chainHead.BlockNum() {
 			chainBlock := chainHead
 			for {
 				chainBlock = self.service.getBlock(chainBlock.PreviousId())
-				if chainBlock.BlockNum() == block.BlockNum(){
+				if chainBlock.BlockNum() == block.BlockNum() {
 					break
 				}
 			}
-			if block.BlockId() > chainBlock.BlockId(){
+			if block.BlockId() > chainBlock.BlockId() {
 				logger.Infof("Switching to new fork ", block)
 				self.service.commitBlock(blockId)
 			} else {
@@ -430,7 +432,8 @@ type DevmodeEngineImpl struct{
 		}
 	}
 	func (self DevmodeEngineImpl) HandleBlockInvalid(blockId consensus.BlockId) {}
-	func (self DevmodeEngineImpl) HandleBlockCommit(blockId consensus.BlockId) {}
+	func (self DevmodeEngineImpl) HandleBlockCommit(blockId consensus.BlockId)  {}
+
 //<
 
 // fn check_consensus(block: &Block) -> bool {
@@ -454,7 +457,7 @@ func createConsensus(summary []byte) []byte {
 	consensusSlice := []byte("Devmode")
 
 	// concatinate the two byte slices
-	consensusSlice = append(consensusSlice,summary...)
+	consensusSlice = append(consensusSlice, summary...)
 
 	return consensusSlice
 }
