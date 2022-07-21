@@ -5,35 +5,40 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/hyperledger/sawtooth-sdk-go/logging"
 	"github.com/hyperledger/sawtooth-sdk-go/consensus"
 	// "github.com/hyperledger/sawtooth-sdk-go/messaging"
 	// consensus_pb2 "github.com/hyperledger/sawtooth-sdk-go/protobuf/consensus_pb2"
 	// zmq "github.com/pebbe/zmq4"
 )
 
+var logger *logging.Logger = logging.Get()
+
 const DEFAULT_WAIT_TIME = 0
+var NULL_BLOCK_IDENTIFIER = consensus.BlockId{}
 
 type LogGuard struct {
 	not_ready_to_summarize bool
 	not_ready_to_finalize  bool
 }
 
-type devmodeService struct {
+type DevmodeService struct {
 	service  consensus.ConsensusService
 	logGuard LogGuard
 }
 
-//> impl devmodeService
-
-	func (self devmodeService) new(service consensus.ConsensusService) devmodeService {
-		return devmodeService{
-			service: service,
-			logGuard: LogGuard{
-				not_ready_to_summarize: false,
-				not_ready_to_finalize:  false,
-			},
-		}
+// Creates a new DevmodeService
+func (self DevmodeService) New(service consensus.ConsensusService) DevmodeService {
+	return DevmodeService{
+		service: service,
+		logGuard: LogGuard{
+			not_ready_to_summarize: false,
+			not_ready_to_finalize:  false,
+		},
 	}
+}
+
+//> impl DevmodeService
 
 	// fn get_chain_head(&mut self) -> Block {
 	//     debug!("Getting chain head");
@@ -41,8 +46,10 @@ type devmodeService struct {
 	//         .get_chain_head()
 	//         .expect("Failed to get chain head")
 	// }
+	//---
 
-	func (self devmodeService) get_chain_head() consensus.Block {
+	func (self DevmodeService) get_chain_head() consensus.Block {
+		logger.Debug("Getting chain head")
 		head, err := self.service.GetChainHead()
 		if err != nil {
 			panic("Failed to get chain head")
@@ -59,7 +66,8 @@ type devmodeService struct {
 	//         .unwrap()
 	// }
 
-	func (self devmodeService) get_block(block_id consensus.BlockId) consensus.Block {
+	func (self DevmodeService) get_block(block_id consensus.BlockId) consensus.Block {
+		logger.Debugf("Getting block ", block_id)
 		ids := make([]consensus.BlockId, 0)
 		ids = append(ids, block_id)
 		blockIdMap, err := self.service.GetBlocks(ids)
@@ -76,8 +84,10 @@ type devmodeService struct {
 	//         .initialize_block(None)
 	//         .expect("Failed to initialize");
 	// }
+	//---
 
-	func (self devmodeService) initialize_block() {
+	func (self DevmodeService) initialize_block() {
+		logger.Debug("Initializing block")
 		err := self.service.InitializeBlock(consensus.BlockId{})
 		if err != nil {
 			panic("Failed to initialize")
@@ -119,7 +129,8 @@ type devmodeService struct {
 	//     block_id
 	// }
 
-	func (self devmodeService) finalize_block() {
+	func (self DevmodeService) finalize_block() {
+		logger.Debug("Finalizing block")
 		summary, err := self.service.SummarizeBlock()
 	}
 
@@ -129,8 +140,10 @@ type devmodeService struct {
 	//         .check_blocks(vec![block_id])
 	//         .expect("Failed to check block");
 	// }
+	//---
 
-	func (self devmodeService) check_block(block_id consensus.BlockId) {
+	func (self DevmodeService) check_block(block_id consensus.BlockId) {
+		logger.Debugf("Checking block ", block_id)
 		blocks := []consensus.BlockId{block_id}
 		err := self.service.CheckBlocks(blocks)
 		if err != nil {
@@ -144,8 +157,10 @@ type devmodeService struct {
 	//         .fail_block(block_id)
 	//         .expect("Failed to fail block");
 	// }
+	//---
 
-	func (self devmodeService) fail_block(block_id consensus.BlockId) {
+	func (self DevmodeService) fail_block(block_id consensus.BlockId) {
+		logger.Debugf("Failing block ", block_id)
 		err := self.service.FailBlock(block_id)
 		if err != nil {
 			panic("Failed to fail block")
@@ -158,8 +173,10 @@ type devmodeService struct {
 	//         .ignore_block(block_id)
 	//         .expect("Failed to ignore block")
 	// }
+	//---
 
-	func (self devmodeService) ignore_block(block_id consensus.BlockId) {
+	func (self DevmodeService) ignore_block(block_id consensus.BlockId) {
+		logger.Debugf("Ignoring block ", block_id)
 		err := self.service.IgnoreBlock(block_id)
 		if err != nil {
 			panic("Failed to ignore block")
@@ -172,8 +189,10 @@ type devmodeService struct {
 	//         .commit_block(block_id)
 	//         .expect("Failed to commit block");
 	// }
+	//---
 
-	func (self devmodeService) commit_block(block_id consensus.BlockId) {
+	func (self DevmodeService) commit_block(block_id consensus.BlockId) {
+		logger.Debugf("Committing block ", block_id)
 		err := self.service.CommitBlock(block_id)
 		if err != nil {
 			panic("Failed to commit block")
@@ -191,7 +210,8 @@ type devmodeService struct {
 	//     };
 	// }
 
-	func (self devmodeService) cancel_block() {
+	func (self DevmodeService) cancel_block() {
+		logger.Debug("Canceling block")
 		err := self.service.CancelBlock()
 		if err != nil {
 			if err.(consensus.Error).ErrorEnum == consensus.InvalidState {
@@ -206,9 +226,11 @@ type devmodeService struct {
 	//         .broadcast("published", block_id)
 	//         .expect("Failed to broadcast published block");
 	// }
+	//---
 
-	func (self devmodeService) broadcast_published_block(block_id consensus.BlockId) {
-		err := self.service.Broadcast("published", []byte(block_id))
+	func (self DevmodeService) broadcast_published_block(block_id consensus.BlockId) {
+		logger.Debugf("Broadcasting published block: ", block_id)
+		err := self.service.Broadcast("published", block_id[:])
 		if err != nil {
 			panic("Failed to broadcast published block")
 		}
@@ -222,8 +244,9 @@ type devmodeService struct {
 	//         .expect("Failed to send block received");
 	// }
 
-	func (self devmodeService) send_block_received(block consensus.Block) {
-		err := self.service.SendTo(block.Signer_id, "recieved", []uint8(block.BlockId))
+	func (self DevmodeService) send_block_received(block consensus.Block) {
+		blockId := block.BlockId()
+		err := self.service.SendTo(block.SignerId(), "recieved", blockId[:])
 		if err != nil {
 			panic("Failed to send block received")
 		}
@@ -234,9 +257,10 @@ type devmodeService struct {
 	//         .send_to(&sender_id, "ack", block_id)
 	//         .expect("Failed to send block ack");
 	// }
+	//---
 
-	func (self devmodeService) send_block_ack(sender_id consensus.PeerId, block_id consensus.BlockId) {
-		err := self.service.SendTo(sender_id, "ack", []uint8(block_id))
+	func (self DevmodeService) send_block_ack(sender_id consensus.PeerId, block_id consensus.BlockId) {
+		err := self.service.SendTo(sender_id, "ack", block_id[:])
 		if err != nil {
 			panic("Failed to send block ack")
 		}
@@ -284,8 +308,14 @@ type devmodeService struct {
 
 	//     time::Duration::from_secs(wait_time)
 	// }
+	//---
 
-	func (self devmodeService) calculate_wait_time(chain_head_id consensus.BlockId) time.Duration {
+	// Calculate the time to wait between publishing blocks. This will be a
+	// random number between the settings sawtooth.consensus.min_wait_time and
+	// sawtooth.consensus.max_wait_time if max > min, else DEFAULT_WAIT_TIME. If
+	// there is an error parsing those settings, the time will be
+	// DEFAULT_WAIT_TIME.
+	func (self DevmodeService) calculate_wait_time(chain_head_id consensus.BlockId) time.Duration {
 		settings, err := self.service.GetSettings(chain_head_id, []string{"sawtooth.consensus.min_wait_time", "sawtooth.consensus.max_wait_time"})
 
 		wait_time := 0
@@ -305,6 +335,8 @@ type devmodeService struct {
 			if err != nil {
 				max_wait_time = 0
 			}
+
+			logger.Debugf("Min: ", min_wait_time, " -- Max: {:?}", max_wait_time)
 
 			if min_wait_time >= max_wait_time {
 				wait_time = DEFAULT_WAIT_TIME
@@ -347,90 +379,3 @@ type DevmodeEngine struct{}
 	func (self DevmodeEngine) HandleBlockInvalid(blockId consensus.BlockId) {}
 	func (self DevmodeEngine) HandleBlockCommit(blockId consensus.BlockId) {}
 //<
-
-// // The main worker thread finds an appropriate handler and processes the request
-// func worker(context *zmq.Context, uri string, queue <-chan *validator_pb2.Message, done chan<- bool, handlers []TransactionHandler) {
-// 	// Connect to the main send/receive thread
-// 	connection, err := messaging.NewConnection(context, zmq.DEALER, uri, false)
-// 	if err != nil {
-// 		logger.Errorf("Failed to connect to main thread: %v", err)
-// 		done <- false
-// 		return
-// 	}
-// 	defer connection.Close()
-// 	id := connection.Identity()
-
-// 	// Receive work off of the queue until the queue is closed
-// 	for msg := range queue {
-// 		request := &processor_pb2.TpProcessRequest{}
-// 		err = proto.Unmarshal(msg.GetContent(), request)
-// 		if err != nil {
-// 			logger.Errorf(
-// 				"(%v) Failed to unmarshal TpProcessRequest: %v", id, err,
-// 			)
-// 			break
-// 		}
-
-// 		header := request.GetHeader()
-
-// 		// Try to find a handler
-// 		handler, err := findHandler(handlers, header)
-// 		if err != nil {
-// 			logger.Errorf("(%v) Failed to find handler: %v", id, err)
-// 			break
-// 		}
-
-// 		// Construct a new Context instance for the handler
-// 		contextId := request.GetContextId()
-// 		context := NewContext(connection, contextId)
-
-// 		// Run the handler
-// 		err = handler.Apply(request, context)
-
-// 		// Process the handler response
-// 		response := &processor_pb2.TpProcessResponse{}
-// 		if err != nil {
-// 			switch e := err.(type) {
-// 			case *InvalidTransactionError:
-// 				logger.Warnf("(%v) %v", id, e)
-// 				response.Status = processor_pb2.TpProcessResponse_INVALID_TRANSACTION
-// 				response.Message = e.Msg
-// 				response.ExtendedData = e.ExtendedData
-// 			case *InternalError:
-// 				logger.Warnf("(%v) %v", id, e)
-// 				response.Status = processor_pb2.TpProcessResponse_INTERNAL_ERROR
-// 				response.Message = e.Msg
-// 				response.ExtendedData = e.ExtendedData
-// 			case *AuthorizationException:
-// 				logger.Warnf("(%v) %v", id, e)
-// 				response.Status = processor_pb2.TpProcessResponse_INVALID_TRANSACTION
-// 				response.Message = e.Msg
-// 				response.ExtendedData = e.ExtendedData
-// 			default:
-// 				logger.Errorf("(%v) Unknown error: %v", id, err)
-// 				response.Status = processor_pb2.TpProcessResponse_INTERNAL_ERROR
-// 				response.Message = e.Error()
-// 			}
-// 		} else {
-// 			response.Status = processor_pb2.TpProcessResponse_OK
-// 		}
-
-// 		responseData, err := proto.Marshal(response)
-// 		if err != nil {
-// 			logger.Errorf("(%v) Failed to marshal TpProcessResponse: %v", id, err)
-// 			break
-// 		}
-
-// 		// Send back a response to the validator
-// 		err = connection.SendMsg(
-// 			validator_pb2.Message_TP_PROCESS_RESPONSE,
-// 			responseData, msg.GetCorrelationId(),
-// 		)
-// 		if err != nil {
-// 			logger.Errorf("(%v) Error sending TpProcessResponse: %v", id, err)
-// 			break
-// 		}
-// 	}
-
-// 	done <- true
-// }
