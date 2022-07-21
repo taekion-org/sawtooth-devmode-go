@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"math/rand"
 	"reflect"
 	"strconv"
@@ -407,8 +408,13 @@ type DevmodeEngineImpl struct {
 
 		logger.Infof("Choosing between chain heads -- current: ", chainHead, " -- new: ", block)
 
+		// blockBlockIdGreater = if block.BlockId() > chainHead.BlockId()
+		blockBlockId := block.BlockId()
+		chainHeadId := chainHead.BlockId()
+		blockBlockIdGreater := bytes.Compare(blockBlockId[:], chainHeadId[:]) > 0
+
 		// advance the chain if possible
-		if block.BlockNum() > chainHead.BlockNum() || (block.BlockNum() == chainHead.BlockNum() && block.BlockId() > chainHead.BlockId()) {
+		if block.BlockNum() > chainHead.BlockNum() || (block.BlockNum() == chainHead.BlockNum() && blockBlockIdGreater) {
 			logger.Infof("Commiting ", block)
 			self.service.commitBlock(blockId)
 		} else if block.BlockNum() < chainHead.BlockNum() {
@@ -419,7 +425,11 @@ type DevmodeEngineImpl struct {
 					break
 				}
 			}
-			if block.BlockId() > chainBlock.BlockId() {
+
+			// if block.BlockId() > chainBlock.BlockId()
+			blockBlockId := block.BlockId()
+			chainBlockId := chainBlock.BlockId()
+			if bytes.Compare(blockBlockId[:], chainBlockId[:]) > 0 {
 				logger.Infof("Switching to new fork ", block)
 				self.service.commitBlock(blockId)
 			} else {
