@@ -4,6 +4,7 @@ import (
 	"math/rand"
 	"strconv"
 	"time"
+	"reflect"
 
 	"github.com/hyperledger/sawtooth-sdk-go/logging"
 	"github.com/hyperledger/sawtooth-sdk-go/consensus"
@@ -142,7 +143,7 @@ func (self DevmodeService) New(service consensus.ConsensusService) DevmodeServic
 	// }
 	//---
 
-	func (self DevmodeService) check_block(block_id consensus.BlockId) {
+	func (self DevmodeService) checkBlock(block_id consensus.BlockId) {
 		logger.Debugf("Checking block ", block_id)
 		blocks := []consensus.BlockId{block_id}
 		err := self.service.CheckBlocks(blocks)
@@ -159,7 +160,7 @@ func (self DevmodeService) New(service consensus.ConsensusService) DevmodeServic
 	// }
 	//---
 
-	func (self DevmodeService) fail_block(block_id consensus.BlockId) {
+	func (self DevmodeService) failBlock(block_id consensus.BlockId) {
 		logger.Debugf("Failing block ", block_id)
 		err := self.service.FailBlock(block_id)
 		if err != nil {
@@ -358,24 +359,68 @@ func (self DevmodeService) New(service consensus.ConsensusService) DevmodeServic
 
 //<
 
-type DevmodeEngine struct{}
+type DevmodeEngineImpl struct{
+	startup_state consensus.StartupState
+	service DevmodeService
+}
 
-//> impl ConsensusEngineImpl for DevmodeEngine
-	func (self DevmodeEngine) Version() string {
+//> impl ConsensusEngineImpl for DevmodeEngineImpl
+	func (self DevmodeEngineImpl) Version() string {
 		return "0.1"
 	}
 
-	func (self DevmodeEngine) Name() string {
+	func (self DevmodeEngineImpl) Name() string {
 		return "Devmode"
 	}
 
-	func (self DevmodeEngine) Startup(startupState consensus.StartupState, service consensus.ConsensusService) {}
-	func (self DevmodeEngine) Shutdown() {}
-	func (self DevmodeEngine) HandlePeerConnected(peerInfo consensus.PeerInfo) {}
-	func (self DevmodeEngine) HandlePeerDisconnected(peerInfo consensus.PeerInfo) {}
-	func (self DevmodeEngine) HandlePeerMessage(peerMessage consensus.PeerMessage) {}
-	func (self DevmodeEngine) HandleBlockNew(block consensus.Block) {}
-	func (self DevmodeEngine) HandleBlockValid(blockId consensus.BlockId) {}
-	func (self DevmodeEngine) HandleBlockInvalid(blockId consensus.BlockId) {}
-	func (self DevmodeEngine) HandleBlockCommit(blockId consensus.BlockId) {}
+	func (self DevmodeEngineImpl) Startup(startupState consensus.StartupState, service consensus.ConsensusService) {}
+	func (self DevmodeEngineImpl) Shutdown() {}
+	func (self DevmodeEngineImpl) HandlePeerConnected(peerInfo consensus.PeerInfo) {}
+	func (self DevmodeEngineImpl) HandlePeerDisconnected(peerInfo consensus.PeerInfo) {}
+	func (self DevmodeEngineImpl) HandlePeerMessage(peerMessage consensus.PeerMessage) {}
+	func (self DevmodeEngineImpl) HandleBlockNew(block consensus.Block) {
+		logger.Infof("Checking consensus data: ", block)
+
+		if block.PreviousId() == NULL_BLOCK_IDENTIFIER {
+			logger.Warn("Received genesis block; ignoring")
+			return
+		}
+
+		if checkConsensus(block){
+			logger.Infof("Passed consensus check: ", block)
+			self.service.checkBlock(block.BlockId())
+		} else {
+			logger.Infof("Failed consensus check: ", block)
+			self.service.failBlock(block.BlockId())
+		}
+	}
+	func (self DevmodeEngineImpl) HandleBlockValid(blockId consensus.BlockId) {}
+	func (self DevmodeEngineImpl) HandleBlockInvalid(blockId consensus.BlockId) {}
+	func (self DevmodeEngineImpl) HandleBlockCommit(blockId consensus.BlockId) {}
 //<
+
+// fn check_consensus(block: &Block) -> bool {
+//     block.payload == create_consensus(&block.summary)
+// }
+//---
+
+func checkConsensus(block consensus.Block) bool {
+	return reflect.DeepEqual(block.Payload(), createConsensus(block.Summary()))
+}
+
+// fn create_consensus(summary: &[u8]) -> Vec<u8> {
+//     let mut consensus: Vec<u8> = Vec::from(&b"Devmode"[..]);
+//     consensus.extend_from_slice(summary);
+//     consensus
+// }
+//---
+
+func createConsensus(summary []byte) []byte {
+	// create a byte slice from the ascii values of a string
+	consensusSlice := []byte("Devmode")
+
+	// concatinate the two byte slices
+	consensusSlice = append(consensusSlice,summary...)
+
+	return consensusSlice
+}
