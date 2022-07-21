@@ -44,7 +44,7 @@ type devmodeService struct {
 	// }
 
 	func (self devmodeService) get_chain_head() consensus.Block {
-		head, err := self.service.Get_chain_head()
+		head, err := self.service.GetChainHead()
 		if err != nil {
 			panic("Failed to get chain head")
 		}
@@ -63,7 +63,7 @@ type devmodeService struct {
 	func (self devmodeService) get_block(block_id consensus.BlockId) consensus.Block {
 		ids := make([]consensus.BlockId, 0)
 		ids = append(ids, block_id)
-		blockIdMap, err := self.service.Get_blocks(ids)
+		blockIdMap, err := self.service.GetBlocks(ids)
 		if err != nil {
 			panic("Failed to get block")
 		}
@@ -79,7 +79,7 @@ type devmodeService struct {
 	// }
 
 	func (self devmodeService) initialize_block() {
-		err := self.service.InitializeBlock(nil)
+		err := self.service.InitializeBlock(consensus.BlockId{})
 		if err != nil {
 			panic("Failed to initialize")
 		}
@@ -224,7 +224,7 @@ type devmodeService struct {
 	// }
 
 	func (self devmodeService) send_block_received(block consensus.Block) {
-		err := self.service.SendTo(block.Signer_id, "recieved", []uint8(block.Block_id))
+		err := self.service.SendTo(block.Signer_id, "recieved", []uint8(block.BlockId))
 		if err != nil {
 			panic("Failed to send block received")
 		}
