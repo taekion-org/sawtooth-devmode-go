@@ -132,9 +132,32 @@ func NewDevmodeService(service consensus.ConsensusService) DevmodeService {
 	//     block_id
 	// }
 
-	func (self DevmodeService) finalizeBlock() {
+	func (self DevmodeService) finalizeBlock() consensus.BlockId {
 		logger.Debug("Finalizing block")
 		summary, err := self.service.SummarizeBlock()
+
+		// todo! loop until err is not from block now being ready
+		// https://github.com/hyperledger/sawtooth-devmode/blob/22b935846113d5214178fd08ca5a97522da734ad/src/engine.rs#L78
+
+		if err != nil{
+			panic("Failed to summarize block")
+		}
+		logger.Debug("Block has been summarized successfully")
+
+		consensus := createConsensus(summary)
+
+		blockId, err := self.service.FinalizeBlock(consensus)
+
+		// todo! https://github.com/hyperledger/sawtooth-devmode/blob/22b935846113d5214178fd08ca5a97522da734ad/src/engine.rs#L92
+
+		self.logGuard.not_ready_to_finalize = false
+		if err != nil {
+			panic("Failed to finalize block")
+		}
+
+		logger.Debugf("Block has been finalized successfully: ", blockId)
+
+		return blockId
 	}
 
 	// fn check_block(&mut self, block_id: BlockId) {
