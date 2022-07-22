@@ -262,7 +262,7 @@ func NewDevmodeService(service consensus.ConsensusService) DevmodeService {
 	// }
 	//---
 
-	func (self DevmodeService) send_block_ack(sender_id consensus.PeerId, block_id consensus.BlockId) {
+	func (self DevmodeService) sendBlockAck(sender_id consensus.PeerId, block_id consensus.BlockId) {
 		err := self.service.SendTo(sender_id, "ack", block_id[:])
 		if err != nil {
 			panic("Failed to send block ack")
@@ -402,9 +402,25 @@ func NewDevmodeEngineImpl(startupState consensus.StartupState, service consensus
 	func (self DevmodeEngineImpl) Shutdown() {
 		logger.Info("DevmodeEngineImpl Shutting down...")
 	}
-	func (self DevmodeEngineImpl) HandlePeerConnected(peerInfo consensus.PeerInfo)     {}
-	func (self DevmodeEngineImpl) HandlePeerDisconnected(peerInfo consensus.PeerInfo)  {}
-	func (self DevmodeEngineImpl) HandlePeerMessage(peerMessage consensus.PeerMessage) {}
+	func (self DevmodeEngineImpl) HandlePeerConnected(peerInfo consensus.PeerInfo)    {}
+	func (self DevmodeEngineImpl) HandlePeerDisconnected(peerInfo consensus.PeerInfo) {}
+	func (self DevmodeEngineImpl) HandlePeerMessage(peerMessage consensus.PeerMessage) {
+		messageType := peerMessage.Header().MessageType()
+
+		senderId := "todo!"
+
+		switch messageType {
+		case "Published":
+			logger.Infof("Received block published message from ", senderId, ": ", peerMessage.Content())
+		case "Received":
+			logger.Infof("Received block received message from ", senderId, ": ", peerMessage.Content())
+			self.service.sendBlockAck(senderId, peerMessage.Content())
+		case "Ack":
+			logger.Infof("Received ack message from ", senderId, ": ", peerMessage.Content())
+		default:
+			panic("HandlePeerMessage() recieved an invalid message type")
+		}
+	}
 	func (self DevmodeEngineImpl) HandleBlockNew(block consensus.Block) {
 		logger.Infof("Checking consensus data: ", block)
 
