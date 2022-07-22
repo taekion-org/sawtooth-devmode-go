@@ -132,7 +132,7 @@ func NewDevmodeService(service consensus.ConsensusService) DevmodeService {
 	//     block_id
 	// }
 
-	func (self DevmodeService) finalize_block() {
+	func (self DevmodeService) finalizeBlock() {
 		logger.Debug("Finalizing block")
 		summary, err := self.service.SummarizeBlock()
 	}
@@ -398,12 +398,18 @@ func NewDevmodeEngineImpl(startupState consensus.StartupState, service consensus
 	}
 
 	func (self DevmodeEngineImpl) Startup(startupState consensus.StartupState, service consensus.ConsensusService) {
+		logger.Info("Called Startup, but DevMode currently has no implementation for it...")
 	}
+
 	func (self DevmodeEngineImpl) Shutdown() {
 		logger.Info("DevmodeEngineImpl Shutting down...")
 	}
-	func (self DevmodeEngineImpl) HandlePeerConnected(peerInfo consensus.PeerInfo)    {}
-	func (self DevmodeEngineImpl) HandlePeerDisconnected(peerInfo consensus.PeerInfo) {}
+	func (self DevmodeEngineImpl) HandlePeerConnected(peerInfo consensus.PeerInfo)    {
+		logger.Info("Called HandlePeerConnected, but DevMode does not do anything with it...")
+	}
+	func (self DevmodeEngineImpl) HandlePeerDisconnected(peerInfo consensus.PeerInfo) {
+		logger.Info("Called HandlePeerDisconnected, but DevMode does not do anything with it...")
+	}
 	func (self DevmodeEngineImpl) HandlePeerMessage(peerMessage consensus.PeerMessage) {
 		messageType := peerMessage.Header().MessageType()
 
@@ -479,7 +485,11 @@ func NewDevmodeEngineImpl(startupState consensus.StartupState, service consensus
 			self.service.ignoreBlock(blockId)
 		}
 	}
-	func (self DevmodeEngineImpl) HandleBlockInvalid(blockId consensus.BlockId) {}
+
+	// devmode does not care about invalid blocks. So this does not need to be implemented.
+	func (self DevmodeEngineImpl) HandleBlockInvalid(blockId consensus.BlockId) {
+		logger.Info("Called HandleBlockInvalid, but DevMode does not do anything with it...")
+	}
 
 	// The chain head was updated, so abandon the
 	// block in progress and start a new one.
