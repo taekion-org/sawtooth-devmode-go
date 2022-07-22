@@ -31,7 +31,7 @@ type DevmodeService struct {
 }
 
 // Creates a new DevmodeService
-func (self DevmodeService) New(service consensus.ConsensusService) DevmodeService {
+func NewDevmodeService(service consensus.ConsensusService) DevmodeService {
 	return DevmodeService{
 		service: service,
 		logGuard: LogGuard{
@@ -89,7 +89,7 @@ func (self DevmodeService) New(service consensus.ConsensusService) DevmodeServic
 	// }
 	//---
 
-	func (self DevmodeService) initialize_block() {
+	func (self DevmodeService) initializeBlock() {
 		logger.Debug("Initializing block")
 		err := self.service.InitializeBlock(consensus.BlockId{})
 		if err != nil {
@@ -213,7 +213,7 @@ func (self DevmodeService) New(service consensus.ConsensusService) DevmodeServic
 	//     };
 	// }
 
-	func (self DevmodeService) cancel_block() {
+	func (self DevmodeService) cancelBlock() {
 		logger.Debug("Canceling block")
 		err := self.service.CancelBlock()
 		if err != nil {
@@ -318,7 +318,7 @@ func (self DevmodeService) New(service consensus.ConsensusService) DevmodeServic
 	// sawtooth.consensus.max_wait_time if max > min, else DEFAULT_WAIT_TIME. If
 	// there is an error parsing those settings, the time will be
 	// DEFAULT_WAIT_TIME.
-	func (self DevmodeService) calculate_wait_time(chain_head_id consensus.BlockId) time.Duration {
+	func (self DevmodeService) calculateWaitTime(chain_head_id consensus.BlockId) time.Duration {
 		settings, err := self.service.GetSettings(chain_head_id, []string{"sawtooth.consensus.min_wait_time", "sawtooth.consensus.max_wait_time"})
 
 		wait_time := 0
@@ -362,8 +362,30 @@ func (self DevmodeService) New(service consensus.ConsensusService) DevmodeServic
 //<
 
 type DevmodeEngineImpl struct {
-	startup_state consensus.StartupState
-	service       DevmodeService
+	startupState      consensus.StartupState
+	service           DevmodeService
+	chainHead         consensus.Block
+	waitTime          time.Duration
+	publishedAtHeight bool
+	start             time.Time
+}
+
+func NewDevmodeEngineImpl(startupState consensus.StartupState, service consensus.ConsensusService) DevmodeEngineImpl {
+
+	devmodeService := NewDevmodeService(service)
+
+	devmodeEngineImpl := DevmodeEngineImpl{
+		startupState:      startupState,
+		service:           devmodeService,
+		chainHead:         startupState.ChainHead(),
+		waitTime:          devmodeService.calculateWaitTime(devmodeService.getChainHead().BlockId()),
+		publishedAtHeight: false,
+		start:             time.Now(),
+	}
+
+	devmodeService.initializeBlock()
+
+	return devmodeEngineImpl
 }
 
 //> impl ConsensusEngineImpl for DevmodeEngineImpl
@@ -442,7 +464,19 @@ type DevmodeEngineImpl struct {
 		}
 	}
 	func (self DevmodeEngineImpl) HandleBlockInvalid(blockId consensus.BlockId) {}
-	func (self DevmodeEngineImpl) HandleBlockCommit(blockId consensus.BlockId)  {}
+
+	// The chain head was updated, so abandon the
+	// block in progress and start a new one.
+	func (self DevmodeEngineImpl) HandleBlockCommit(newChainHead consensus.BlockId) {
+		logger.Infof("Chain head updated to ", newChainHead, ", abandoning block in progress")
+
+		self.service.cancelBlock()
+
+		self.waitTime = self.service.calculateWaitTime(newChainHead)
+		self.publishedAtHeight = false
+		self.start = time.Now()
+		self.service.initializeBlock()
+	}
 
 //<
 
