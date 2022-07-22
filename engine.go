@@ -43,14 +43,6 @@ func NewDevmodeService(service consensus.ConsensusService) DevmodeService {
 
 //> impl DevmodeService
 
-	// fn get_chain_head(&mut self) -> Block {
-	//     debug!("Getting chain head");
-	//     self.service
-	//         .get_chain_head()
-	//         .expect("Failed to get chain head")
-	// }
-	//---
-
 	func (self DevmodeService) getChainHead() consensus.Block {
 		logger.Debug("Getting chain head")
 		head, err := self.service.GetChainHead()
@@ -59,15 +51,6 @@ func NewDevmodeService(service consensus.ConsensusService) DevmodeService {
 		}
 		return head
 	}
-
-	// fn get_block(&mut self, block_id: &BlockId) -> Block {
-	//     debug!("Getting block {}", to_hex(&block_id));
-	//     self.service
-	//         .get_blocks(vec![block_id.clone()])
-	//         .expect("Failed to get block")
-	//         .remove(block_id)
-	//         .unwrap()
-	// }
 
 	func (self DevmodeService) getBlock(block_id consensus.BlockId) consensus.Block {
 		logger.Debugf("Getting block ", block_id)
@@ -80,14 +63,6 @@ func NewDevmodeService(service consensus.ConsensusService) DevmodeService {
 		block := blockIdMap[block_id]
 		return block
 	}
-
-	// fn initialize_block(&mut self) {
-	//     debug!("Initializing block");
-	//     self.service
-	//         .initialize_block(None)
-	//         .expect("Failed to initialize");
-	// }
-	//---
 
 	func (self DevmodeService) initializeBlock() {
 		logger.Debug("Initializing block")
@@ -139,7 +114,7 @@ func NewDevmodeService(service consensus.ConsensusService) DevmodeService {
 		// todo! loop until err is not from block now being ready
 		// https://github.com/hyperledger/sawtooth-devmode/blob/22b935846113d5214178fd08ca5a97522da734ad/src/engine.rs#L78
 
-		if err != nil{
+		if err != nil {
 			panic("Failed to summarize block")
 		}
 		logger.Debug("Block has been summarized successfully")
@@ -160,14 +135,6 @@ func NewDevmodeService(service consensus.ConsensusService) DevmodeService {
 		return blockId
 	}
 
-	// fn check_block(&mut self, block_id: BlockId) {
-	//     debug!("Checking block {}", to_hex(&block_id));
-	//     self.service
-	//         .check_blocks(vec![block_id])
-	//         .expect("Failed to check block");
-	// }
-	//---
-
 	func (self DevmodeService) checkBlock(block_id consensus.BlockId) {
 		logger.Debugf("Checking block ", block_id)
 		blocks := []consensus.BlockId{block_id}
@@ -177,14 +144,6 @@ func NewDevmodeService(service consensus.ConsensusService) DevmodeService {
 		}
 	}
 
-	// fn fail_block(&mut self, block_id: BlockId) {
-	//     debug!("Failing block {}", to_hex(&block_id));
-	//     self.service
-	//         .fail_block(block_id)
-	//         .expect("Failed to fail block");
-	// }
-	//---
-
 	func (self DevmodeService) failBlock(block_id consensus.BlockId) {
 		logger.Debugf("Failing block ", block_id)
 		err := self.service.FailBlock(block_id)
@@ -193,14 +152,6 @@ func NewDevmodeService(service consensus.ConsensusService) DevmodeService {
 		}
 	}
 
-	// fn ignore_block(&mut self, block_id: BlockId) {
-	//     debug!("Ignoring block {}", to_hex(&block_id));
-	//     self.service
-	//         .ignore_block(block_id)
-	//         .expect("Failed to ignore block")
-	// }
-	//---
-
 	func (self DevmodeService) ignoreBlock(block_id consensus.BlockId) {
 		logger.Debugf("Ignoring block ", block_id)
 		err := self.service.IgnoreBlock(block_id)
@@ -208,14 +159,6 @@ func NewDevmodeService(service consensus.ConsensusService) DevmodeService {
 			panic("Failed to ignore block")
 		}
 	}
-
-	// fn commit_block(&mut self, block_id: BlockId) {
-	//     debug!("Committing block {}", to_hex(&block_id));
-	//     self.service
-	//         .commit_block(block_id)
-	//         .expect("Failed to commit block");
-	// }
-	//---
 
 	func (self DevmodeService) commitBlock(block_id consensus.BlockId) {
 		logger.Debugf("Committing block ", block_id)
@@ -246,14 +189,6 @@ func NewDevmodeService(service consensus.ConsensusService) DevmodeService {
 		}
 	}
 
-	// fn broadcast_published_block(&mut self, block_id: BlockId) {
-	//     debug!("Broadcasting published block: {}", to_hex(&block_id));
-	//     self.service
-	//         .broadcast("published", block_id)
-	//         .expect("Failed to broadcast published block");
-	// }
-	//---
-
 	func (self DevmodeService) broadcast_published_block(block_id consensus.BlockId) {
 		logger.Debugf("Broadcasting published block: ", block_id)
 		err := self.service.Broadcast("published", block_id[:])
@@ -261,14 +196,6 @@ func NewDevmodeService(service consensus.ConsensusService) DevmodeService {
 			panic("Failed to broadcast published block")
 		}
 	}
-
-	// fn send_block_received(&mut self, block: &Block) {
-	//     let block = block.clone();
-
-	//     self.service
-	//         .send_to(&block.signer_id, "received", block.block_id)
-	//         .expect("Failed to send block received");
-	// }
 
 	func (self DevmodeService) sendBlockReceived(block consensus.Block) {
 		blockId := block.BlockId()
@@ -278,63 +205,12 @@ func NewDevmodeService(service consensus.ConsensusService) DevmodeService {
 		}
 	}
 
-	// fn send_block_ack(&mut self, sender_id: &PeerId, block_id: BlockId) {
-	//     self.service
-	//         .send_to(&sender_id, "ack", block_id)
-	//         .expect("Failed to send block ack");
-	// }
-	//---
-
 	func (self DevmodeService) sendBlockAck(sender_id consensus.PeerId, block_id consensus.BlockId) {
 		err := self.service.SendTo(sender_id, "ack", block_id[:])
 		if err != nil {
 			panic("Failed to send block ack")
 		}
 	}
-
-	// // Calculate the time to wait between publishing blocks. This will be a
-	// // random number between the settings sawtooth.consensus.min_wait_time and
-	// // sawtooth.consensus.max_wait_time if max > min, else DEFAULT_WAIT_TIME. If
-	// // there is an error parsing those settings, the time will be
-	// // DEFAULT_WAIT_TIME.
-	// fn calculate_wait_time(&mut self, chain_head_id: BlockId) -> time::Duration {
-	//     let settings_result = self.service.get_settings(
-	//         chain_head_id,
-	//         vec![
-	//             String::from("sawtooth.consensus.min_wait_time"),
-	//             String::from("sawtooth.consensus.max_wait_time"),
-	//         ],
-	//     );
-
-	//     let wait_time = if let Ok(settings) = settings_result {
-	//         let ints: Vec<u64> = vec![
-	//             &settings["sawtooth.consensus.min_wait_time"],
-	//             &settings["sawtooth.consensus.max_wait_time"],
-	//         ]
-	//         .iter()
-	//         .map(|string| string.parse::<u64>())
-	//         .map(|result| result.unwrap_or(0))
-	//         .collect();
-
-	//         let min_wait_time: u64 = ints[0];
-	//         let max_wait_time: u64 = ints[1];
-
-	//         debug!("Min: {:?} -- Max: {:?}", min_wait_time, max_wait_time);
-
-	//         if min_wait_time >= max_wait_time {
-	//             DEFAULT_WAIT_TIME
-	//         } else {
-	//             rand::thread_rng().gen_range(min_wait_time, max_wait_time)
-	//         }
-	//     } else {
-	//         DEFAULT_WAIT_TIME
-	//     };
-
-	//     info!("Wait time: {:?}", wait_time);
-
-	//     time::Duration::from_secs(wait_time)
-	// }
-	//---
 
 	// Calculate the time to wait between publishing blocks. This will be a
 	// random number between the settings sawtooth.consensus.min_wait_time and
@@ -427,7 +303,7 @@ func NewDevmodeEngineImpl(startupState consensus.StartupState, service consensus
 	func (self DevmodeEngineImpl) Shutdown() {
 		logger.Info("DevmodeEngineImpl Shutting down...")
 	}
-	func (self DevmodeEngineImpl) HandlePeerConnected(peerInfo consensus.PeerInfo)    {
+	func (self DevmodeEngineImpl) HandlePeerConnected(peerInfo consensus.PeerInfo) {
 		logger.Info("Called HandlePeerConnected, but DevMode does not do anything with it...")
 	}
 	func (self DevmodeEngineImpl) HandlePeerDisconnected(peerInfo consensus.PeerInfo) {
@@ -529,21 +405,9 @@ func NewDevmodeEngineImpl(startupState consensus.StartupState, service consensus
 
 //<
 
-// fn check_consensus(block: &Block) -> bool {
-//     block.payload == create_consensus(&block.summary)
-// }
-//---
-
 func checkConsensus(block consensus.Block) bool {
 	return reflect.DeepEqual(block.Payload(), createConsensus(block.Summary()))
 }
-
-// fn create_consensus(summary: &[u8]) -> Vec<u8> {
-//     let mut consensus: Vec<u8> = Vec::from(&b"Devmode"[..]);
-//     consensus.extend_from_slice(summary);
-//     consensus
-// }
-//---
 
 func createConsensus(summary []byte) []byte {
 	// create a byte slice from the ascii values of a string
