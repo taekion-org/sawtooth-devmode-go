@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"github.com/hyperledger/sawtooth-sdk-go/consensus"
 	"math/rand"
 	"time"
 )
@@ -12,5 +12,6 @@ func init() {
 }
 
 func main() {
-	fmt.Println("Hello, Gopher!")
+	engine := consensus.NewConsensusEngine("tcp://tesla:5050", &DevmodeEngineImpl{})
+	engine.Start()
 }
