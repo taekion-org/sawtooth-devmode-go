@@ -9,6 +9,7 @@ replace github.com/hyperledger/sawtooth-sdk-go => ../sawtooth-sdk-go
 
 require (
 	github.com/hyperledger/sawtooth-sdk-go v0.0.0-00010101000000-000000000000
+	github.com/jessevdk/go-flags v1.4.0
 	github.com/pebbe/zmq4 v1.2.5
 	google.golang.org/protobuf v1.28.0
 )
