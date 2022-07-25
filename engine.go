@@ -7,7 +7,6 @@ import (
 	"math/rand"
 	"reflect"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/hyperledger/sawtooth-sdk-go/consensus"
@@ -272,9 +271,6 @@ type DevmodeEngineImpl struct {
 	waitTime          time.Duration
 	publishedAtHeight bool
 	start             time.Time
-	mutex             sync.Mutex
-	ticker            *time.Ticker
-	tickerStop        chan bool
 }
 
 //> impl ConsensusEngineImpl for DevmodeEngineImpl
@@ -286,10 +282,7 @@ func (self *DevmodeEngineImpl) Name() string {
 	return "Devmode"
 }
 
-func (self *DevmodeEngineImpl) Start(startupState consensus.StartupState, service consensus.ConsensusService) error {
-	self.mutex.Lock()
-	defer self.mutex.Unlock()
-
+func (self *DevmodeEngineImpl) Start(startupState consensus.StartupState, service consensus.ConsensusService, notifyChan chan consensus.Notification) error {
 	self.service = NewDevmodeService(service)
 	self.chainHead = startupState.ChainHead()
 	self.waitTime = self.service.calculateWaitTime(self.chainHead.BlockId())
@@ -298,56 +291,35 @@ func (self *DevmodeEngineImpl) Start(startupState consensus.StartupState, servic
 
 	self.service.initializeBlock()
 
-	self.ticker = time.NewTicker(time.Millisecond * 10)
-	self.tickerStop = make(chan bool)
-	go func() {
-		for {
-			select {
-			case <-self.tickerStop:
-				return
-			case <-self.ticker.C:
-				self.mutex.Lock()
-				if !self.publishedAtHeight && (time.Now().Sub(self.start) > self.waitTime) {
-					logger.Info("Timer expired -- publishing block")
-					newBlockId := self.service.finalizeBlock()
-					self.publishedAtHeight = true
-					self.service.broadcast_published_block(newBlockId)
-				}
-				self.mutex.Unlock()
+	for {
+		select {
+		case n := <-notifyChan:
+			switch notification := n.(type) {
+			case consensus.NotificationShutdown:
+				break
+			case consensus.NotificationBlockNew:
+				self.HandleBlockNew(notification.Block)
+			case consensus.NotificationBlockValid:
+				self.HandleBlockValid(notification.BlockId)
+			case consensus.NotificationBlockCommit:
+				self.HandleBlockCommit(notification.BlockId)
+			case consensus.NotificationPeerMessage:
+				self.HandlePeerMessage(notification.PeerMessage, notification.SenderId)
+			}
+		case <-time.After(time.Millisecond * 10):
+			if !self.publishedAtHeight && (time.Now().Sub(self.start) > self.waitTime) {
+				logger.Info("Timer expired -- publishing block")
+				newBlockId := self.service.finalizeBlock()
+				self.publishedAtHeight = true
+				self.service.broadcast_published_block(newBlockId)
 			}
 		}
-	}()
-
-	logger.Debug("Devmode Start() completed")
+	}
 
 	return nil
 }
 
-func (self *DevmodeEngineImpl) Shutdown() error {
-	self.mutex.Lock()
-	defer self.mutex.Unlock()
-
-	logger.Info("DevmodeEngineImpl Shutting down...")
-	self.tickerStop <- true
-	return nil
-}
-
-func (self *DevmodeEngineImpl) HandlePeerConnected(peerInfo consensus.PeerInfo) {
-	self.mutex.Lock()
-	defer self.mutex.Unlock()
-
-	logger.Info("Called HandlePeerConnected, but DevMode does not do anything with it...")
-}
-func (self *DevmodeEngineImpl) HandlePeerDisconnected(peerInfo consensus.PeerInfo) {
-	self.mutex.Lock()
-	defer self.mutex.Unlock()
-
-	logger.Info("Called HandlePeerDisconnected, but DevMode does not do anything with it...")
-}
 func (self *DevmodeEngineImpl) HandlePeerMessage(peerMessage consensus.PeerMessage, senderId consensus.PeerId) {
-	self.mutex.Lock()
-	defer self.mutex.Unlock()
-
 	messageType := peerMessage.Header().MessageType()
 
 	switch messageType {
@@ -364,9 +336,6 @@ func (self *DevmodeEngineImpl) HandlePeerMessage(peerMessage consensus.PeerMessa
 }
 
 func (self *DevmodeEngineImpl) HandleBlockNew(block consensus.Block) {
-	self.mutex.Lock()
-	defer self.mutex.Unlock()
-
 	logger.Infof("Checking consensus data: %v", block)
 
 	if block.PreviousId() == consensus.BLOCK_ID_NULL {
@@ -383,9 +352,6 @@ func (self *DevmodeEngineImpl) HandleBlockNew(block consensus.Block) {
 	}
 }
 func (self *DevmodeEngineImpl) HandleBlockValid(blockId consensus.BlockId) {
-	self.mutex.Lock()
-	defer self.mutex.Unlock()
-
 	block := self.service.getBlock(blockId)
 
 	self.service.sendBlockReceived(block)
@@ -428,20 +394,9 @@ func (self *DevmodeEngineImpl) HandleBlockValid(blockId consensus.BlockId) {
 	}
 }
 
-// devmode does not care about invalid blocks. So this does not need to be implemented.
-func (self *DevmodeEngineImpl) HandleBlockInvalid(blockId consensus.BlockId) {
-	self.mutex.Lock()
-	defer self.mutex.Unlock()
-
-	logger.Info("Called HandleBlockInvalid, but DevMode does not do anything with it...")
-}
-
 // The chain head was updated, so abandon the
 // block in progress and start a new one.
 func (self *DevmodeEngineImpl) HandleBlockCommit(newChainHead consensus.BlockId) {
-	self.mutex.Lock()
-	defer self.mutex.Unlock()
-
 	logger.Infof("Chain head updated to %v, abandoning block in progress", newChainHead)
 
 	self.service.cancelBlock()
