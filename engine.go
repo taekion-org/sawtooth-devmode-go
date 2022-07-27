@@ -296,7 +296,7 @@ type DevmodeEngineImpl struct {
 			case n := <-notifyChan:
 				switch notification := n.(type) {
 				case consensus.NotificationShutdown:
-					break
+					return nil
 				case consensus.NotificationBlockNew:
 					self.HandleBlockNew(notification.Block)
 				case consensus.NotificationBlockValid:
@@ -315,8 +315,6 @@ type DevmodeEngineImpl struct {
 				}
 			}
 		}
-
-		return nil
 	}
 
 	func (self *DevmodeEngineImpl) HandlePeerMessage(peerMessage consensus.PeerMessage, senderId consensus.PeerId) {
