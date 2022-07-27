@@ -11,9 +11,6 @@ import (
 
 	"github.com/hyperledger/sawtooth-sdk-go/consensus"
 	"github.com/hyperledger/sawtooth-sdk-go/logging"
-	// "github.com/hyperledger/sawtooth-sdk-go/messaging"
-	// consensus_pb2 "github.com/hyperledger/sawtooth-sdk-go/protobuf/consensus_pb2"
-	// zmq "github.com/pebbe/zmq4"
 )
 
 var logger *logging.Logger = logging.Get()
@@ -71,41 +68,6 @@ func NewDevmodeService(service consensus.ConsensusService) *DevmodeService {
 			panic("Failed to initialize")
 		}
 	}
-
-	// fn finalize_block(&mut self) -> BlockId {
-	//     debug!("Finalizing block");
-	//     let mut summary = self.service.summarize_block();
-	//     while let Err(Error::BlockNotReadyError) = summary {
-	//         if !self.log_guard.not_ready_to_summarize {
-	//             self.log_guard.not_ready_to_summarize = true;
-	//             debug!("Block not ready to summarize");
-	//         }
-	//         sleep(time::Duration::from_secs(1));
-	//         summary = self.service.summarize_block();
-	//     }
-	//     self.log_guard.not_ready_to_summarize = false;
-	//     let summary = summary.expect("Failed to summarize block");
-	//     debug!("Block has been summarized successfully");
-
-	//     let consensus: Vec<u8> = create_consensus(&summary);
-	//     let mut block_id = self.service.finalize_block(consensus.clone());
-	//     while let Err(Error::BlockNotReadyError) = block_id {
-	//         if !self.log_guard.not_ready_to_finalize {
-	//             self.log_guard.not_ready_to_finalize = true;
-	//             debug!("Block not ready to finalize");
-	//         }
-	//         sleep(time::Duration::from_secs(1));
-	//         block_id = self.service.finalize_block(consensus.clone());
-	//     }
-	//     self.log_guard.not_ready_to_finalize = false;
-	//     let block_id = block_id.expect("Failed to finalize block");
-	//     debug!(
-	//         "Block has been finalized successfully: {}",
-	//         to_hex(&block_id)
-	//     );
-
-	//     block_id
-	// }
 
 	func (self *DevmodeService) finalizeBlock() consensus.BlockId {
 		logger.Debug("Finalizing block")
@@ -173,17 +135,6 @@ func NewDevmodeService(service consensus.ConsensusService) *DevmodeService {
 			panic("Failed to commit block")
 		}
 	}
-
-	// fn cancel_block(&mut self) {
-	//     debug!("Canceling block");
-	//     match self.service.cancel_block() {
-	//         Ok(_) => {}
-	//         Err(Error::InvalidStateError(_)) => {}
-	//         Err(err) => {
-	//             panic!("Failed to cancel block: {:?}", err);
-	//         }
-	//     };
-	// }
 
 	func (self *DevmodeService) cancelBlock() {
 		logger.Debug("Canceling block")
